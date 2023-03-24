@@ -1,4 +1,4 @@
-## installation
+## Installation
 
 ```console
 #clone the repo
@@ -9,11 +9,28 @@ $ python3 -m pip install -r requirements.txt
 ```
 
 
-## running as root
+## Running as root
 
 ```console
+$ mv robotBuster.py robotBuster
 $ sudo cp robotBuster
 $ cd
 $ cd /bin
 $ chmod +rwx robotBuster
+```
+
+## Usage
+
+```console
+$ robotBuster --help
+usage: robotBuster [-h] -u URL [-w WORDLIST] [-v]
+
+Directory searcher
+
+options:
+  -h, --help            show this help message and exit
+  -u URL, --url URL     specify a target url
+  -w WORDLIST, --wordlist WORDLIST
+                        specifies a wordlist to search.
+  -v, --version         show tool version and exit.
 ```
