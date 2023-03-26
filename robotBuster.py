@@ -21,7 +21,7 @@ def start():
     os.system("clear")
     print("Developed by: vinnyrobot")
     print("Beta v1.0")
-    print("Code: https://gitbub.com/vinnyrobot/robotBuster")
+    print("Code: https://github.com/vinnyrobot/robotBuster")
     print("Profile Github: https://github.com/vinnyrobot")
     sleep(0.5)
     banner = pyfiglet.figlet_format("VINNYROBOT")
