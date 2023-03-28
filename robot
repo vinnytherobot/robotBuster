@@ -12,7 +12,7 @@ from threading import Thread
 parser = argparse.ArgumentParser(description="Directory searcher")
 
 parser.add_argument("-u", "--url", required=True, type=str, help="specify a target url")
-parser.add_argument("-w", "--wordlist", required=False, type=str, help="specifies a wordlist to search.")
+parser.add_argument("-w", "--wordlist", required=True, type=str, help="specifies a wordlist to search.")
 parser.add_argument("-v", "--version", action="version", version="v1.0", help="show tool version and exit.")
 
 args = parser.parse_args()
@@ -21,7 +21,7 @@ def start():
     os.system("clear")
     print("Developed by: vinnyrobot")
     print("Beta v1.0")
-    print("Code: https://gitbub.com/vinnyrobot/robotBuster")
+    print("Code: https://github.com/vinnyrobot/robotBuster")
     print("Profile Github: https://github.com/vinnyrobot")
     sleep(0.5)
     banner = pyfiglet.figlet_format("VINNYROBOT")
@@ -52,8 +52,11 @@ def sendRequest(url):
     return request
 
 
-def search(url, wordlist):
+def search():
+    url = args.url
+    wordlist = args.wordlist
     foundRoutes = []
+
     try:
 
         file = open(wordlist)
@@ -67,7 +70,6 @@ def search(url, wordlist):
     except KeyboardInterrupt:
         message("")
         message("Exiting... Goodbye", "error")
-        message("Finished with " + str(len(foundRoutes)) + " results!", "finished")
         exit()
     except requests.exceptions.ConnectionError:
         message("Service not found", "error")
@@ -79,7 +81,4 @@ def search(url, wordlist):
 start()
 if __name__ == "__main__":
     if args.url and args.wordlist:
-        Thread(target=search(args.url, args.wordlist)).start()
-    elif args.url and not args.wordlist:
-        wordlist = "/usr/share/dirb/wordlists/common.txt"
-        Thread(target=search(args.url, wordlist)).start()
+        Thread(target=search).start()
