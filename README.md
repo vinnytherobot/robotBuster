@@ -13,7 +13,7 @@ $ python3 -m pip install -r requirements.txt
 
 ```console
 $ mv robotBuster.py robotBuster
-$ sudo cp robotBuster
+$ sudo cp robotBuster /bin
 $ cd
 $ cd /bin
 $ chmod +rwx robotBuster
