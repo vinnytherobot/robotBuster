@@ -17,7 +17,7 @@ $ mv robotBuster.py robotBuster
 $ sudo cp robotBuster /bin
 $ cd
 $ cd /bin
-$ chmod +rwx robotBuster
+$ sudo chmod +rwx robotBuster
 ```
 
 ## Usage
