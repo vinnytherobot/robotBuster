@@ -5,80 +5,81 @@ import requests
 import argparse
 import pyfiglet
 from pytz import timezone
-from time import sleep
 from datetime import datetime
 from threading import Thread
 
-parser = argparse.ArgumentParser(description="Directory searcher")
+class Colors:
+    INFO = "\033[34m"
+    SUCCESS = "\033[32m"
+    ERROR = "\033[31m"
+    WARNING = "\033[33m"
+    RESET = "\033[m"
 
-parser.add_argument("-u", "--url", required=True, type=str, help="specify a target url")
-parser.add_argument("-w", "--wordlist", required=True, type=str, help="specifies a wordlist to search.")
-parser.add_argument("-v", "--version", action="version", version="v1.0", help="show tool version and exit.")
-
-args = parser.parse_args()
-
-def start():
+def clear_screen():
     os.system("clear")
+
+def print_header():
     print("Developed by: vinnyrobot")
     print("Beta v1.0")
     print("Code: https://github.com/vinnytherobot/robotBuster")
     print("Profile Github: https://github.com/vinnytherobot")
     sleep(0.5)
     banner = pyfiglet.figlet_format("VINNYROBOT")
-    print("\033[1;32m" + banner + "\033[m")
+    print(Colors.SUCCESS + banner + Colors.RESET)
 
+def print_message(text="", message_type="info"):
+    date_and_hour_now = datetime.now().astimezone(timezone("Europe/London")).strftime("%H:%M:%S")
 
-def message(text="", messageType=""):
-    dateAndHourNow = datetime.now()
-    timeZone = timezone("Europe/London")
-    dateAndHourLondon = dateAndHourNow.astimezone(timeZone)
-    dateAndHourLondonInText = dateAndHourLondon.strftime("%H:%M:%S")
+    message_color = {
+        "info": Colors.INFO,
+        "finished": Colors.SUCCESS,
+        "error": Colors.ERROR,
+        "warning": Colors.WARNING
+    }.get(message_type, "")
 
-    if messageType == "info":
-        print("[\033[34m" + dateAndHourLondonInText + "\033[m]", "[\033[32m" + "INFO" + "\033[m]", str(text))
-    elif messageType == "finished":
-        print("\n[\033[34m" + dateAndHourLondonInText + "\033[m]", "[\033[32m" + "FINISHED" + "\033[m]", str(text))
-    elif messageType == "error":
-        print("[\033[31m" + "ERROR" + "\033[m]", str(text))
-    elif messageType == "warning":
-        print("[\033[34m" + dateAndHourLondonInText + "\033[m]", "[\033[33m" + "WARNING" + "\033[m]", str(text))
-    else:
-        print(text)
+    print(f"[{Colors.INFO}{date_and_hour_now}{Colors.RESET}] [{message_color}{message_type.upper()}{Colors.RESET}] {text}")
 
-
-def sendRequest(url):
-    request = requests.get(url)
-
-    return request
-
+def send_request(url):
+    try:
+        return requests.get(url)
+    except requests.exceptions.RequestException as e:
+        print_message(f"Error sending request: {e}", "error")
+        return None
 
 def search():
     url = args.url
     wordlist = args.wordlist
-    foundRoutes = []
+    found_routes = []
 
     try:
+        with open(wordlist, "r") as file:
+            for route in file:
+                route = route.strip()
+                request = send_request(url + route)
 
-        file = open(wordlist)
-        for route in file.readlines():
-            request = sendRequest(url + str(route).replace("\n", ""))
-
-            if request.status_code == 200:
-                message("Directory found: \033[1;32m" + request.url + "\033[m", "info")
-                foundRoutes.append(str(route).replace("\n", ""))
+                if request and request.status_code == 200:
+                    found_routes.append(route)
+                    print_message(f"Directory found: {request.url}", "info")
 
     except KeyboardInterrupt:
-        message("")
-        message("Exiting... Goodbye", "error")
+        print_message("\nExiting... Goodbye", "error")
         exit()
-    except requests.exceptions.ConnectionError:
-        message("Service not found", "error")
+    except FileNotFoundError:
+        print_message(f"Wordlist file '{wordlist}' not found", "error")
         exit()
 
-    message("Finished with " + str(len(foundRoutes)) + " results!", "finished")
+    print_message(f"Finished with {len(found_routes)} results!", "finished")
 
-
-start()
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Directory searcher")
+    parser.add_argument("-u", "--url", required=True, type=str, help="specify a target URL")
+    parser.add_argument("-w", "--wordlist", required=True, type=str, help="specifies a wordlist to search")
+    parser.add_argument("-v", "--version", action="version", version="v1.0", help="show tool version and exit")
+
+    args = parser.parse_args()
+
+    clear_screen()
+    print_header()
+
     if args.url and args.wordlist:
         Thread(target=search).start()
