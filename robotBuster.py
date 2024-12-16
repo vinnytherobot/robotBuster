@@ -19,7 +19,7 @@ def clear_screen():
     os.system("clear")
 
 def print_header():
-    print("Developed by: vinnyrobot")
+    print("Developed by: vinnytherobot")
     print("Beta v1.0")
     print("Code: https://github.com/vinnytherobot/robotBuster")
     print("Profile Github: https://github.com/vinnytherobot")
