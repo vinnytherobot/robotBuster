@@ -1,5 +1,7 @@
 # 🤖 RobotBuster v2.0
 
+![RobotBuster Banner](assets/banner.png)
+
 **RobotBuster** is a modern, ultra-fast, and intuitive route enumeration (directory brute-force) tool written in Python. Now featuring full asynchronous support and a premium terminal interface.
 
 ---
