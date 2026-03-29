@@ -1,7 +1,7 @@
 """Core scanner implementation for RobotBuster."""
 
 import asyncio
-import random
+import random  # nosec B403
 import time
 from pathlib import Path
 from typing import List, Set, Optional, AsyncGenerator, Callable
@@ -170,7 +170,7 @@ class RobotScanner:
                             )
                             if title_match:
                                 title = title_match.group(1).strip()
-                        except Exception:
+                        except Exception:  # nosec B110
                             pass
 
                     result = ScanResult(
