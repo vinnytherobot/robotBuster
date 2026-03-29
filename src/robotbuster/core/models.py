@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, List, Set, Dict, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from .exceptions import ConfigurationError
 
@@ -48,14 +48,14 @@ class ScanConfig(BaseModel):
     max_redirects: int = Field(default=5, ge=0, description="Maximum redirects to follow")
     headers: Dict[str, str] = Field(default_factory=dict, description="Custom headers")
 
-    @validator('target')
+    @field_validator('target')
     def validate_target(cls, v):
         """Validate target URL."""
         if not v.startswith(('http://', 'https://')):
             raise ConfigurationError("Target must start with http:// or https://")
         return v.rstrip('/')
 
-    @validator('wordlist')
+    @field_validator('wordlist')
     def validate_wordlist(cls, v):
         """Validate wordlist file exists."""
         if not v.exists():
@@ -64,7 +64,7 @@ class ScanConfig(BaseModel):
             raise ConfigurationError(f"Wordlist path is not a file: {v}")
         return v
 
-    @validator('headers')
+    @field_validator('headers')
     def validate_headers(cls, v):
         """Validate headers don't contain forbidden keys."""
         forbidden = {'host', 'connection', 'content-length'}
