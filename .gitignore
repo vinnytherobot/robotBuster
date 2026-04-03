@@ -161,3 +161,7 @@ cython_debug/
 .agents/
 _agent/
 _agents/
+
+# Project-specific
+CLAUDE.md
+tests/fixtures/

@@ -132,3 +132,36 @@ class WildcardInfo:
             self.status_code == status_code
             and self.content_length == content_length
         )
+
+
+@dataclass
+class RateLimitInfo:
+    """Information about rate limiting state."""
+
+    detected: bool = False
+    retry_after: Optional[int] = None
+    backoff_factor: float = 1.0
+    consecutive_429s: int = 0
+    original_concurrency: int = 20
+
+    def handle_429(self, retry_after: Optional[int] = None) -> float:
+        """Handle a 429 response. Returns backoff duration in seconds."""
+        self.detected = True
+        self.consecutive_429s += 1
+        if retry_after:
+            self.retry_after = retry_after
+            return float(retry_after)
+        self.backoff_factor = min(self.backoff_factor * 2, 30.0)
+        return self.backoff_factor
+
+    def get_backoff(self) -> float:
+        """Get current backoff duration without incrementing counters."""
+        if self.retry_after:
+            return float(self.retry_after)
+        return self.backoff_factor
+
+    def reset(self) -> None:
+        """Reset rate limit state after successful requests."""
+        self.detected = False
+        self.consecutive_429s = 0
+        self.backoff_factor = 1.0

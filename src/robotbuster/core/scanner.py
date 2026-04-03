@@ -1,18 +1,15 @@
 """Core scanner implementation for RobotBuster."""
 
 import asyncio
-import random  # nosec B403
 import time
-from pathlib import Path
-from typing import List, Set, Optional, AsyncGenerator, Callable
-from datetime import datetime
+from typing import Optional, AsyncGenerator, Callable
 
 import httpx
 from rich.progress import Progress, TaskID
 from rich.console import Console
 
-from .models import ScanConfig, ScanResult, ScanStats, WildcardInfo
-from .exceptions import NetworkError, TimeoutError, ConnectionError, WildcardDetected
+from .models import ScanConfig, ScanResult, ScanStats, WildcardInfo, RateLimitInfo
+from .exceptions import NetworkError
 from ..utils.display import DisplayManager
 from ..utils.wordlist import WordlistManager
 
@@ -29,7 +26,8 @@ class RobotScanner:
         self.config = config
         self.stats = ScanStats()
         self.wildcard = WildcardInfo()
-        self.results: List[ScanResult] = []
+        self.rate_limit = RateLimitInfo(original_concurrency=config.concurrency)
+        self.results: list[ScanResult] = []
         self.console = Console()
         self.display = DisplayManager(self.console)
         self.semaphore = asyncio.Semaphore(config.concurrency)
@@ -144,12 +142,44 @@ class RobotScanner:
                 if self.config.delay > 0:
                     await asyncio.sleep(self.config.delay)
 
+                # Check if we need to backoff due to rate limiting
+                if self.rate_limit.detected and self.rate_limit.consecutive_429s > 0:
+                    backoff_duration = self.rate_limit.get_backoff()
+                    await asyncio.sleep(backoff_duration)
+
                 response = await self.client.get(url)
                 response_time = time.time() - start_time
+
+                # Reset rate limit counters on successful response
+                if response.status_code != 429:
+                    if self.rate_limit.consecutive_429s > 0:
+                        self.rate_limit.reset()
+                        self.console.print(
+                            f"[green]✓ Rate limit recovered, restoring concurrency to {self.config.concurrency}[/green]"
+                        )
+                        self.semaphore = asyncio.Semaphore(self.config.concurrency)
 
                 # Update statistics
                 self.stats.total_requests += 1
                 self.stats.successful_requests += 1
+
+                # Handle rate limiting
+                if response.status_code == 429:
+                    self.stats.total_requests -= 1
+                    self.stats.successful_requests -= 1
+                    retry_after = response.headers.get("retry-after")
+                    retry_after_val = int(retry_after) if retry_after and retry_after.isdigit() else None
+                    backoff = self.rate_limit.handle_429(retry_after_val)
+
+                    if not self.rate_limit.detected or self.rate_limit.consecutive_429s == 1:
+                        self.console.print(
+                            f"[yellow]⚠ Rate limit detected (429).[/yellow] "
+                            f"Backing off for {backoff:.1f}s, reducing concurrency..."
+                        )
+                    if self.rate_limit.consecutive_429s > 1:
+                        current_limit = max(1, self.config.concurrency // 2)
+                        self.semaphore = asyncio.Semaphore(current_limit)
+                    return None
 
                 # Check if this is a finding and not a wildcard
                 status = response.status_code
