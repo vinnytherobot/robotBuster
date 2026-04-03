@@ -10,7 +10,7 @@ readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.9"
 authors = [
-    {name = "vinnytherobot", email = "[EMAIL_ADDRESS]"}
+    {name = "vinnytherobot", email = "vinnytherobot.code@gmail.com"}
 ]
 keywords = ["security", "pentesting", "directory-brute-force", "scanner", "cli"]
 classifiers = [
