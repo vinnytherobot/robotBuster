@@ -121,7 +121,7 @@ class TestStateManager:
             target="http://example.com",
             wordlist=test_wordlist,
         )
-        state = manager.create_state(config, total_routes=100)
+        manager.create_state(config, total_routes=100)
         manager.save_state()
 
         manager2 = StateManager(temp_dir)

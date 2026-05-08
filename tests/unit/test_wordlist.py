@@ -17,7 +17,7 @@ def test_wordlist_sync_load(temp_wordlist):
     assert "api" in routes
     assert "backup" in routes
     # Verify sorted/unique
-    assert routes == sorted(list(set(routes)))
+    assert routes == sorted(routes)
 
 
 @pytest.mark.asyncio

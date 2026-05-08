@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Optional, AsyncGenerator, Callable, Set
+from typing import Optional, AsyncGenerator, Callable, Set, Type
 
 import httpx
 from rich.progress import Progress, TaskID
@@ -44,12 +44,17 @@ class RobotScanner:
             **config.headers,
         }
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "RobotScanner":
         """Async context manager entry."""
         await self._setup_client()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[BaseException],
+    ) -> None:
         """Async context manager exit."""
         if self.client:
             await self.client.aclose()
@@ -182,7 +187,7 @@ class RobotScanner:
                     self.stats.total_requests -= 1
                     self.stats.successful_requests -= 1
                     retry_after = response.headers.get("retry-after")
-                    retry_after_val = int(retry_after) if retry_after and retry_after.isdigit() else None
+                    retry_after_val: Optional[int] = int(retry_after) if retry_after and retry_after.isdigit() else None
                     backoff = self.rate_limit.handle_429(retry_after_val)
 
                     if not self.rate_limit.detected or self.rate_limit.consecutive_429s == 1:
@@ -282,7 +287,7 @@ class RobotScanner:
         try:
             routes = await wordlist_manager.load_wordlist(self.config.wordlist)
         except Exception as e:
-            raise NetworkError(f"Failed to load wordlist: {e}")
+            raise NetworkError(f"Failed to load wordlist: {e}") from None
 
         if not routes:
             self.console.print("[red]Error: Wordlist is empty[/red]")
@@ -391,7 +396,7 @@ class RobotScanner:
             return
 
         # Save every 50 routes or on finding
-        if self.scan_state.completed_routes % 50 == 0 or self.scan_state.findings % 1 == 0:
+        if self.scan_state.completed_routes % 50 == 0 or len(self.scan_state.found_routes) % 1 == 0:
             self.scan_state.add_scanned_route(list(self._scanned_routes)[-1] if self._scanned_routes else "")
             self.state_manager.save_state()
 

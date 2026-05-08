@@ -7,7 +7,7 @@ from pathlib import Path
 from robotbuster import RobotScanner, ScanConfig
 
 
-async def main():
+async def main() -> None:
     # 1. Define your configuration
     config = ScanConfig(
         target="https://httpbin.org",
@@ -26,9 +26,9 @@ async def main():
     # 3. Initialize and run the scanner
     async with RobotScanner(config) as scanner:
         # We can iterate over the scan generator
-        async for result in scanner.scan():
+        async for _ in scanner.scan():
             # 'scanner.scan()' is an AsyncGenerator that yields ScanResult objects
-            pass # scanner.check_route also prints to console by default
+            pass  # scanner.check_route also prints to console by default
 
     # 4. Access final statistics
     summary = scanner.get_summary()

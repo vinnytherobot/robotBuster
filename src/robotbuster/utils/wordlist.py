@@ -10,7 +10,7 @@ import asyncio
 class WordlistManager:
     """Manager for wordlist loading, deduplication, and manipulation."""
 
-    def __init__(self):
+    def __init__(self) -> None:  # type: ignore[no-untyped-def]
         """Initialize wordlist manager."""
         pass
 
@@ -55,7 +55,7 @@ class WordlistManager:
         except Exception:
             raise
             
-        return sorted(list(routes))
+        return sorted(routes)
 
     def filter_extensions(self, routes: List[str], extensions: Set[str]) -> List[str]:
         """Filter routes by given extensions.

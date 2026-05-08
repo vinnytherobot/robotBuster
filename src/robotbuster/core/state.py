@@ -48,7 +48,7 @@ class ScanState:
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         # Handle non-serializable config fields
-        config_serializable = None
+        config_serializable: Optional[dict[str, Any]] = None
         if self.config:
             config_serializable = {}
             for k, v in self.config.items():

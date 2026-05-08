@@ -25,7 +25,7 @@ console = Console()
 display = DisplayManager(console)
 
 
-def parse_status_codes(value: str) -> Set[int]:
+def parse_status_codes(value: str) -> Set[int]:  # type: ignore[no-untyped-def]
     """Parse comma-separated status codes.
     
     Args:
@@ -44,7 +44,7 @@ def parse_status_codes(value: str) -> Set[int]:
         raise typer.BadParameter("Status codes must be comma-separated integers.")
 
 
-@app.command()
+@app.command()  # type: ignore[misc]
 def scan(
     target: str = typer.Argument(..., help="Target URL to scan (e.g., https://example.com)"),
     wordlist: Path = typer.Option(
@@ -103,11 +103,6 @@ def scan(
     """
     [bold cyan]Scan[/bold cyan] a target URL for hidden directories and routes.
     """
-    
-    # Map status callback result if None
-    if status is None:
-        status = {200, 204, 301, 302, 307, 401, 403}
-
     # Create config
     config = ScanConfig(
         target=target,
@@ -198,13 +193,13 @@ def scan(
 
 
 @app.command()
-def version():
+def version() -> None:
     """Display version information."""
     display.print_banner()
     console.print(f"RobotBuster Version: [bold cyan]2.1.0[/bold cyan]")
 
 
-def main():
+def main() -> None:
     """Main entry point for the CLI application."""
     app()
 

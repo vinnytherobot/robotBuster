@@ -21,7 +21,7 @@ class ScanResult:
     headers: Optional[Dict[str, str]] = None
     body_preview: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:  # type: ignore[no-untyped-def]
         """Post-initialization processing."""
         if self.headers is None:
             self.headers = {}
@@ -49,14 +49,14 @@ class ScanConfig(BaseModel):
     headers: Dict[str, str] = Field(default_factory=dict, description="Custom headers")
 
     @field_validator('target')
-    def validate_target(cls, v):
+    def validate_target(cls, v: str) -> str:
         """Validate target URL."""
         if not v.startswith(('http://', 'https://')):
             raise ConfigurationError("Target must start with http:// or https://")
         return v.rstrip('/')
 
     @field_validator('wordlist')
-    def validate_wordlist(cls, v):
+    def validate_wordlist(cls, v: Path) -> Path:
         """Validate wordlist file exists."""
         if not v.exists():
             raise ConfigurationError(f"Wordlist file not found: {v}")
@@ -65,7 +65,7 @@ class ScanConfig(BaseModel):
         return v
 
     @field_validator('headers')
-    def validate_headers(cls, v):
+    def validate_headers(cls, v: Dict[str, str]) -> Dict[str, str]:
         """Validate headers don't contain forbidden keys."""
         forbidden = {'host', 'connection', 'content-length'}
         for key in v:
