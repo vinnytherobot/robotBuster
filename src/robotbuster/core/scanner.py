@@ -61,11 +61,18 @@ class RobotScanner:
 
     async def _setup_client(self) -> None:
         """Set up HTTP client with configuration."""
+        proxies: Optional[dict[str, str]] = None
+        if self.config.proxy:
+            proxies = {
+                "http://": self.config.proxy,
+                "https://": self.config.proxy,
+            }
         self.client = httpx.AsyncClient(
             headers=self.headers,
             timeout=self.config.timeout,
             follow_redirects=self.config.follow_redirects,
             max_redirects=self.config.max_redirects,
+            proxies=proxies,
         )
 
     async def calibrate(self) -> WildcardInfo:

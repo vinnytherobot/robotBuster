@@ -47,6 +47,8 @@ class ScanConfig(BaseModel):
     delay: float = Field(default=0.0, ge=0.0, description="Delay between requests in seconds")
     max_redirects: int = Field(default=5, ge=0, description="Maximum redirects to follow")
     headers: Dict[str, str] = Field(default_factory=dict, description="Custom headers")
+    proxy: Optional[str] = Field(default=None, description="Proxy URL (http/https/socks5)")
+    proxy_rotation: bool = Field(default=False, description="Rotate through multiple proxies")
 
     @field_validator('target')
     def validate_target(cls, v: str) -> str:
@@ -71,6 +73,18 @@ class ScanConfig(BaseModel):
         for key in v:
             if key.lower() in forbidden:
                 raise ConfigurationError(f"Header '{key}' is not allowed")
+        return v
+
+    @field_validator('proxy')
+    def validate_proxy(cls, v: Optional[str]) -> Optional[str]:
+        """Validate proxy URL format."""
+        if v is None:
+            return v
+        valid_schemes = ('http://', 'https://', 'socks5://', 'socks5h://')
+        if not any(v.startswith(scheme) for scheme in valid_schemes):
+            raise ConfigurationError(
+                f"Proxy must start with {', '.join(valid_schemes)}"
+            )
         return v
 
     class Config:

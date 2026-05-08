@@ -99,6 +99,10 @@ def scan(
         None, "--state-file",
         help="Custom state file path for resume"
     ),
+    proxy: Optional[str] = typer.Option(
+        None, "--proxy", "-p",
+        help="Proxy URL (http/https/socks5) for requests"
+    ),
 ):
     """
     [bold cyan]Scan[/bold cyan] a target URL for hidden directories and routes.
@@ -115,6 +119,7 @@ def scan(
         user_agent=user_agent,
         verbose=verbose,
         follow_redirects=follow_redirects,
+        proxy=proxy,
     )
 
     async def run_scan():
