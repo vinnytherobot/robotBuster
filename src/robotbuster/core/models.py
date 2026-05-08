@@ -179,3 +179,4 @@ class RateLimitInfo:
         self.detected = False
         self.consecutive_429s = 0
         self.backoff_factor = 1.0
+        self.retry_after = None
