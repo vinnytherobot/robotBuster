@@ -165,3 +165,6 @@ _agents/
 # Project-specific
 CLAUDE.md
 tests/fixtures/
+TASKS.md
+GEMINI.md
+.claude
