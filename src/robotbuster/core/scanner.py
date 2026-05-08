@@ -2,13 +2,14 @@
 
 import asyncio
 import time
-from typing import Optional, AsyncGenerator, Callable
+from typing import Optional, AsyncGenerator, Callable, Set
 
 import httpx
 from rich.progress import Progress, TaskID
 from rich.console import Console
 
 from .models import ScanConfig, ScanResult, ScanStats, WildcardInfo, RateLimitInfo
+from .state import ScanState, StateManager
 from .exceptions import NetworkError
 from ..utils.display import DisplayManager
 from ..utils.wordlist import WordlistManager
@@ -17,11 +18,12 @@ from ..utils.wordlist import WordlistManager
 class RobotScanner:
     """Main scanner class for RobotBuster."""
 
-    def __init__(self, config: ScanConfig):
+    def __init__(self, config: ScanConfig, state_manager: Optional[StateManager] = None):
         """Initialize scanner with configuration.
 
         Args:
             config: Scan configuration object
+            state_manager: Optional state manager for resume functionality
         """
         self.config = config
         self.stats = ScanStats()
@@ -32,6 +34,9 @@ class RobotScanner:
         self.display = DisplayManager(self.console)
         self.semaphore = asyncio.Semaphore(config.concurrency)
         self.client: Optional[httpx.AsyncClient] = None
+        self.state_manager = state_manager
+        self.scan_state: Optional[ScanState] = None
+        self._scanned_routes: Set[str] = set()
 
         # Prepare custom headers
         self.headers = {
@@ -133,6 +138,15 @@ class RobotScanner:
                 progress.advance(task_id)
             return None
 
+        # Skip already scanned routes (resume support)
+        if route in self._scanned_routes:
+            if progress and task_id:
+                progress.advance(task_id)
+            return None
+
+        # Mark route as scanned
+        self._scanned_routes.add(route)
+
         url = f"{self.config.target}/{route.lstrip('/')}"
         start_time = time.time()
 
@@ -222,6 +236,11 @@ class RobotScanner:
                     # Save to output file if configured
                     if self.config.output_file:
                         self._save_result(result)
+
+                    # Save to state if configured
+                    if self.scan_state:
+                        self.scan_state.add_finding(result)
+                        self._maybe_save_state()
 
                     return result
 
@@ -329,3 +348,62 @@ class RobotScanner:
             "success_rate": self.stats.success_rate,
             "wildcard_detected": self.wildcard.detected,
         }
+
+    def init_state(self, total_routes: int) -> None:
+        """Initialize scan state for resume functionality.
+
+        Args:
+            total_routes: Total number of routes to scan
+        """
+        if self.state_manager:
+            self.scan_state = self.state_manager.create_state(self.config, total_routes)
+            # Restore wildcard info if previously detected
+            if self.scan_state.wildcard_detected:
+                self.wildcard.status_code = self.scan_state.wildcard_status
+                self.wildcard.content_length = self.scan_state.wildcard_content_length
+                self.wildcard.detected = True
+
+    def load_previous_state(self) -> bool:
+        """Load previous scan state for resume.
+
+        Returns:
+            True if previous state was loaded
+        """
+        if self.state_manager:
+            previous_state = self.state_manager.load_previous_state(self.config.target)
+            if previous_state:
+                self.scan_state = previous_state
+                self._scanned_routes = previous_state.scanned_routes.copy()
+                # Restore wildcard info
+                if previous_state.wildcard_detected:
+                    self.wildcard.status_code = previous_state.wildcard_status
+                    self.wildcard.content_length = previous_state.wildcard_content_length
+                    self.wildcard.detected = True
+                # Restore previous findings
+                for finding_dict in previous_state.found_routes:
+                    self.results.append(ScanResult(**finding_dict))
+                return True
+        return False
+
+    def _maybe_save_state(self) -> None:
+        """Save state periodically (every 50 routes or on finding)."""
+        if not self.scan_state or not self.state_manager:
+            return
+
+        # Save every 50 routes or on finding
+        if self.scan_state.completed_routes % 50 == 0 or self.scan_state.findings % 1 == 0:
+            self.scan_state.add_scanned_route(list(self._scanned_routes)[-1] if self._scanned_routes else "")
+            self.state_manager.save_state()
+
+    def get_remaining_routes(self, all_routes: list[str]) -> list[str]:
+        """Get routes that haven't been scanned yet.
+
+        Args:
+            all_routes: All routes to scan
+
+        Returns:
+            List of remaining routes
+        """
+        if not self._scanned_routes:
+            return all_routes
+        return [r for r in all_routes if r not in self._scanned_routes]

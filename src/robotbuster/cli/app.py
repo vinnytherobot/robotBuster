@@ -10,6 +10,7 @@ from rich.console import Console
 
 from ..core.scanner import RobotScanner
 from ..core.models import ScanConfig
+from ..core.state import StateManager
 from ..core.exceptions import RobotBusterError
 from ..utils.display import DisplayManager
 
@@ -47,7 +48,7 @@ def parse_status_codes(value: str) -> Set[int]:
 def scan(
     target: str = typer.Argument(..., help="Target URL to scan (e.g., https://example.com)"),
     wordlist: Path = typer.Option(
-        ..., "--wordlist", "-w", 
+        ..., "--wordlist", "-w",
         help="Path to wordlist file",
         exists=True,
         file_okay=True,
@@ -55,7 +56,7 @@ def scan(
         readable=True,
     ),
     concurrency: int = typer.Option(
-        20, "--tasks", "-t", 
+        20, "--tasks", "-t",
         help="Number of concurrent requests",
         min=1,
         max=1000
@@ -90,6 +91,14 @@ def scan(
         False, "--follow", "-f",
         help="Follow HTTP redirects"
     ),
+    resume: bool = typer.Option(
+        False, "--resume", "-r",
+        help="Resume a previous scan from saved state"
+    ),
+    state_file: Optional[Path] = typer.Option(
+        None, "--state-file",
+        help="Custom state file path for resume"
+    ),
 ):
     """
     [bold cyan]Scan[/bold cyan] a target URL for hidden directories and routes.
@@ -115,32 +124,61 @@ def scan(
 
     async def run_scan():
         try:
-            async with RobotScanner(config) as scanner:
-                # Use scanner.get_progress() if we want more control,
-                # but currently scanner.scan() handles its own progress if we use it with gather.
-                # Actually scanner.scan() in its current form uses yield.
-                # Let's adapt it to use progress bar here.
-                
+            # Set up state manager if resume enabled
+            state_manager = None
+            if resume or state_file:
+                state_manager = StateManager()
+
+            async with RobotScanner(config, state_manager) as scanner:
                 # We need to know total routes first to show progress
                 from ..utils.wordlist import WordlistManager
-                routes = await WordlistManager().load_wordlist(config.wordlist)
-                
-                display.print_scan_banner(config, len(routes))
-                
+                wordlist_manager = WordlistManager()
+                all_routes = await wordlist_manager.load_wordlist(config.wordlist)
+
+                # Handle resume
+                remaining_routes = all_routes
+                previous_findings = []
+
+                if resume:
+                    if scanner.load_previous_state():
+                        previous_findings = scanner.results.copy()
+                        remaining_routes = scanner.get_remaining_routes(all_routes)
+                        console.print(
+                            f"[cyan]Resuming scan:[/cyan] {len(previous_findings)} previous findings, "
+                            f"{len(remaining_routes):,} routes remaining"
+                        )
+                    else:
+                        console.print("[yellow]No previous state found, starting fresh scan[/yellow]")
+
+                # Initialize state for new scan
+                if not scanner.scan_state and state_manager:
+                    scanner.init_state(len(all_routes))
+
+                display.print_scan_banner(config, len(remaining_routes))
+
                 with display.get_progress() as progress:
-                    task_id = progress.add_task(f"[cyan]Scanning {len(routes):,} routes...", total=len(routes))
-                    
+                    task_id = progress.add_task(
+                        f"[cyan]Scanning {len(remaining_routes):,} routes...",
+                        total=len(remaining_routes)
+                    )
+
                     # Create tasks for concurrent scanning
                     tasks = []
-                    for route in routes:
+                    for route in remaining_routes:
                         tasks.append(scanner.check_route(route, progress, task_id))
-                    
+
                     # Store results in scanner.results as they complete
                     # scanner.check_route handles adding to results and immediate display
                     await asyncio.gather(*tasks)
-                    
-                # Final summary
-                display.print_summary(scanner.stats, scanner.results)
+
+                # Final summary (include previous findings)
+                all_results = previous_findings + scanner.results
+                display.print_summary(scanner.stats, all_results)
+
+                # Save final state
+                if state_manager and scanner.scan_state:
+                    state_manager.save_state()
+                    console.print(f"[dim]State saved for future resume[/dim]")
                 
         except RobotBusterError as e:
             console.print(f"[bold red]Configuration Error:[/bold red] {e}")

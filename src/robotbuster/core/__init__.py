@@ -2,6 +2,7 @@
 
 from .scanner import RobotScanner
 from .models import ScanConfig, ScanResult, ScanStats, WildcardInfo, RateLimitInfo
+from .state import ScanState, StateManager
 from .exceptions import (
     RobotBusterError,
     ConfigurationError,
@@ -21,6 +22,8 @@ __all__ = [
     "ScanStats",
     "WildcardInfo",
     "RateLimitInfo",
+    "ScanState",
+    "StateManager",
     "RobotBusterError",
     "ConfigurationError",
     "NetworkError",
